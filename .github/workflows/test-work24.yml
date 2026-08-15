@@ -1,0 +1,13 @@
+name: work24 access test
+on: workflow_dispatch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: call work24 OPIA
+        run: |
+          echo "--- runner public IP ---"
+          curl -s -m 20 https://api.ipify.org ; echo
+          echo "--- work24 response ---"
+          curl -s -m 30 "https://eis.work24.go.kr/opi/joApi.do?apiSecd=OPIA&rsdAreaCd=11680&sxdsCd=M&ageCd=06&rernSecd=XML&closStdrYm=202606&bgnPage=1&display=10" | iconv -f EUC-KR -t UTF-8 | head -c 1500 ; echo
