@@ -1,0 +1,20 @@
+name: work24 reliability
+on: workflow_dispatch
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2, 3, 4, 5, 6]
+    steps:
+      - name: probe
+        run: |
+          IP=$(curl -s -m 10 https://api.ipify.org)
+          for i in 1 2 3; do
+            R=$(curl -sS -o /dev/null -w "http=%{http_code} t=%{time_total}s" --connect-timeout 10 -m 25 "https://eis.work24.go.kr/opi/joApi.do?apiSecd=OPIA&rsdAreaCd=11680&sxdsCd=M&ageCd=06&rernSecd=XML&closStdrYm=202606&bgnPage=1&display=10" 2>&1) || R="CURL_FAIL"
+            echo "RESULT job=$MN ip=$IP try=$i $R"
+          done
+        env:
+          MN: ${{ matrix.n }}
