@@ -1,0 +1,23 @@
+name: work24 probe summary
+on: workflow_dispatch
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - name: probe
+        env:
+          MN: ${{ matrix.n }}
+        run: |
+          U="https://eis.work24.go.kr/opi/joApi.do?apiSecd=OPIA&rsdAreaCd=11680&sxdsCd=M&ageCd=06&rernSecd=XML&closStdrYm=202606&bgnPage=1&display=10"
+          IP=$(curl -s -m 10 https://api.ipify.org)
+          OUT=""
+          for i in 1 2 3; do
+            R=$(curl -sS -o /dev/null -w "%{http_code}@%{time_total}s" --connect-timeout 10 -m 25 "$U" 2>/dev/null) || R="FAIL"
+            OUT="$OUT $R"
+          done
+          echo "| $MN | $IP |$OUT |" >> $GITHUB_STEP_SUMMARY
