@@ -1,0 +1,47 @@
+name: monthly work24 full
+
+# 피보험자(OPIB)는 사업장 단위 행이라 무거워서 월 1회만 돌린다.
+# 이미 수집한 (연월, 구)는 건너뛰므로 실제로는 새 마감월만 받아온다.
+
+on:
+  schedule:
+    - cron: "0 20 5 * *"      # 매월 5일 UTC 20:00 = KST 6일 05:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: work24 구인구직 + 피보험자
+        working-directory: scripts
+        env:
+          N_MONTHS: "24"
+          WITH_OPIB: "1"
+        run: python collect_work24.py
+
+      - name: 대시보드 JSON 생성
+        working-directory: scripts
+        run: python build_data.py
+
+      - name: 변경분 커밋
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data docs
+          git pull --rebase origin main || true
+          git diff --staged --quiet || git commit -m "work24 monthly"
+          git pull --rebase origin main
+          git push
