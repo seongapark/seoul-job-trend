@@ -1,4 +1,8 @@
 name: work24 collect now
+
+# 수동 실행용. work24는 IP당 일일 조회 한도가 있어 24개월을 한 번에 못 받는다.
+# 한도에 걸리면 받은 달까지 저장하고 정상 종료하므로, 여러 날에 걸쳐 다시 돌리면 채워진다.
+
 on: workflow_dispatch
 
 permissions:
@@ -10,26 +14,31 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: work24 OPIA (구인구직) 24개월 수집
+
+      - name: work24 OPIA (구인구직) 수집
         working-directory: scripts
         env:
           N_MONTHS: "24"
           WITH_OPIB: "0"
-          WORKERS: "8"
+          WORKERS: "3"
         run: python collect_work24.py
+
       - name: 대시보드 JSON 생성
         working-directory: scripts
         run: python build_data.py
+
       - name: 변경분 커밋
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data docs
-          git diff --staged --quiet || git commit -m "work24 OPIA initial collect"
+          git pull --rebase origin main || true
+          git diff --staged --quiet || git commit -m "work24 OPIA collect"
+          git pull --rebase origin main
           git push
