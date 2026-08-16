@@ -8,7 +8,7 @@
 이미 수집한 (연월, 구) 조합은 건너뛰므로 매일 돌려도 새 마감월이 나올 때만 실제 호출한다.
 인증키 없음. 간헐적 무응답이 있어 common.http_get의 재시도에 의존.
 """
-import os, sys, time, xml.etree.ElementTree as ET
+import os, re, sys, time, xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from common import DATA, GU, http_get, append_csv
 from datetime import date
@@ -19,18 +19,28 @@ AGES = [f"{i:02d}" for i in range(1, 16)]
 N_MONTHS = int(os.environ.get("N_MONTHS", "24"))
 WITH_OPIB = os.environ.get("WITH_OPIB", "0") == "1"
 WORKERS = int(os.environ.get("WORKERS", "4"))
+# display는 10보다 크고 10000보다 작아야 한다(API 제약). 1이나 10000을 넣으면 에러 응답.
+DISPLAY = 9999
 OPIA_CSV = os.path.join(DATA, "work24_opia.csv")
 OPIB_CSV = os.path.join(DATA, "work24_opib.csv")
 
 
 def fetch(api, **params):
-    p = {"apiSecd": api, "rernSecd": "XML", "bgnPage": 1, "display": 10000}
+    """(건수, 행목록) 반환. 에러 응답이면 (-1, [에러메시지])."""
+    p = {"apiSecd": api, "rernSecd": "XML", "bgnPage": 1, "display": DISPLAY}
     p.update(params)
     url = URL[api] + "?" + "&".join(f"{k}={v}" for k, v in p.items())
     txt = http_get(url, encoding="euc-kr", timeout=60)
+
+    # 이 API는 루트 닫힘태그 뒤에 '>'를 하나 더 붙여 보낸다 → 그대로 파싱하면 깨진다
+    m = re.search(r"</(rqstApi|baroone)>", txt)
+    if m:
+        txt = txt[:m.end()]
+
     root = ET.fromstring(txt)
-    if root.findtext(".//error"):
-        return 0, []
+    err = root.findtext(".//error")
+    if err:
+        return -1, [err]
     cnt = int(root.findtext(".//rqst-cnt") or 0)
     rows = [{c.tag: (c.text or "").strip() for c in rq} for rq in root.iter("rqst")]
     return cnt, rows
@@ -39,12 +49,15 @@ def fetch(api, **params):
 def fetch_all(api, **params):
     """rqst-cnt만큼 전량 수신 (OPIB 페이징)."""
     cnt, rows = fetch(api, **params)
+    if cnt < 0:
+        print(f"  [에러] {params} → {rows[0][:60]}")
+        return []
     if cnt <= len(rows):
         return rows
     got = list(rows)
     while len(got) < cnt:
-        _, more = fetch(api, bgnPage=len(got) // 10000 + 1, **params)
-        if not more:
+        c2, more = fetch(api, bgnPage=len(got) // DISPLAY + 1, **params)
+        if c2 < 0 or not more:
             break
         got += more
     return got
@@ -52,12 +65,15 @@ def fetch_all(api, **params):
 
 def latest_month():
     y, m = date.today().year, date.today().month
-    for _ in range(6):
+    for _ in range(8):
         ym = f"{y}{m:02d}"
-        cnt, _ = fetch("OPIA", rsdAreaCd="11110", sxdsCd="M", ageCd="07",
-                       closStdrYm=ym, display=1)
-        if cnt > 0:
+        cnt, info = fetch("OPIA", rsdAreaCd="11110", sxdsCd="M", ageCd="07", closStdrYm=ym)
+        if cnt < 0:
+            print(f"  {ym}: API 에러 → {info[0][:80]}")
+        elif cnt > 0:
             return ym
+        else:
+            print(f"  {ym}: 아직 미제공")
         m -= 1
         if m == 0:
             y, m = y - 1, 12
