@@ -179,7 +179,7 @@ svg{display:block;width:100%;overflow:visible}
     <h2>채용공고(일) ↔ 워크넷 구인구직(월)</h2>
     <p class="sub">단위가 달라 <b>첫 달 = 100</b>으로 지수화해 한 축에 올림. 사람인은 월평균으로 접었음.
       지역 기준이 서로 다름(사람인=근무지 표기, work24=사업장 소재지).</p>
-    <div class="lgd">
+    <div class="lgd" id="lgd-cmp">
       <span><i style="background:var(--s1)"></i>사람인 공고수</span>
       <span><i style="background:var(--s2)"></i>work24 신규구인</span>
       <span><i style="background:var(--s3)"></i>고용보험 피보험자</span>
@@ -356,9 +356,31 @@ function render(){
   const s=DATA.saramin, w=DATA.work24;
   document.getElementById("stamp").textContent=`${DATA.updated} 기준`;
   if(DATA.mock) document.getElementById("mockbar").style.display="block";
-  if(!s){document.getElementById("tiles").innerHTML=
-    `<div class="tile"><div class="lbl">데이터 없음</div><div class="val">–</div>
-     <div class="dlt">수집이 아직 실행되지 않았습니다</div></div>`;return;}
+  if(!s){                                    // 사람인 수집 전 — work24만 표시
+    ["#overview","#keyword","#kwtrend","#region","#job"].forEach(id=>{
+      const el=document.querySelector(id); if(el) el.style.display="none";});
+    document.getElementById("mockbar").style.display="block";
+    document.getElementById("mockbar").innerHTML=
+      "사람인 API 승인 대기 중이라 <b>채용공고 데이터는 아직 없습니다</b>. "+
+      "아래 work24 구인구직만 실제 데이터로 표시됩니다.";
+    document.getElementById("tiles").innerHTML="";
+    if(w){
+      document.querySelector("#compare h2").textContent="워크넷 구인구직 월별 추이";
+      document.querySelector("#compare p.sub").innerHTML=
+        "고용행정통계 work24 · 서울 25개 구 합계 · 월 단위 마감치. 사업장 소재지 기준.";
+      document.getElementById("lgd-cmp").innerHTML=
+        ['<span><i style="background:var(--s1)"></i>신규구인</span>',
+         '<span><i style="background:var(--s2)"></i>신규구직</span>',
+         '<span><i style="background:var(--s3)"></i>취업건수</span>'].join("");
+      lineChart(document.getElementById("c-cmp"),{
+        labels:w.yms.map(y=>y.slice(2,4)+"."+y.slice(4)),
+        series:[{name:"신규구인",color:"var(--s1)",values:w["신규구인"]},
+                {name:"신규구직",color:"var(--s2)",values:w["신규구직"]},
+                {name:"취업건수",color:"var(--s3)",values:w["취업건수"]}]});
+      table(document.getElementById("t-cmp"),["연월","신규구인","신규구직","취업건수"],
+        w.yms.map((y,i)=>[y,F(w["신규구인"][i]),F(w["신규구직"][i]),F(w["취업건수"][i])]).reverse());
+    }
+    return;}
 
   const n=s.dates.length, k=RANGE?Math.max(0,n-RANGE):0;
   const dates=s.dates.slice(k), tot=s.total.slice(k), ma=s.ma7.slice(k);
