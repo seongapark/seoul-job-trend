@@ -176,12 +176,12 @@ svg{display:block;width:100%;overflow:visible}
   </section>
 
   <section class="card" id="compare">
-    <h2>채용공고(일) ↔ 워크넷 구인구직(월)</h2>
+    <h2>채용공고(일) ↔ 워크넷 신규구직(월)</h2>
     <p class="sub">단위가 달라 <b>첫 달 = 100</b>으로 지수화해 한 축에 올림. 사람인은 월평균으로 접었음.
-      지역 기준이 서로 다름(사람인=근무지 표기, work24=사업장 소재지).</p>
+      지역 기준이 서로 다름(사람인=공고에 표기된 근무지, work24=<b>구직자 거주지</b>). work24 신규구인은 거주지·성별·연령으로 분해되지 않아 이 API 조합으로는 받을 수 없음.</p>
     <div class="lgd" id="lgd-cmp">
       <span><i style="background:var(--s1)"></i>사람인 공고수</span>
-      <span><i style="background:var(--s2)"></i>work24 신규구인</span>
+      <span><i style="background:var(--s2)"></i>work24 신규구직</span>
       <span><i style="background:var(--s3)"></i>고용보험 피보험자</span>
     </div>
     <div class="chart" id="c-cmp"></div>
@@ -369,16 +369,14 @@ function render(){
       document.querySelector("#compare p.sub").innerHTML=
         "고용행정통계 work24 · 서울 25개 구 합계 · 월 단위 마감치. 사업장 소재지 기준.";
       document.getElementById("lgd-cmp").innerHTML=
-        ['<span><i style="background:var(--s1)"></i>신규구인</span>',
-         '<span><i style="background:var(--s2)"></i>신규구직</span>',
+        ['<span><i style="background:var(--s2)"></i>신규구직</span>',
          '<span><i style="background:var(--s3)"></i>취업건수</span>'].join("");
       lineChart(document.getElementById("c-cmp"),{
         labels:w.yms.map(y=>y.slice(2,4)+"."+y.slice(4)),
-        series:[{name:"신규구인",color:"var(--s1)",values:w["신규구인"]},
-                {name:"신규구직",color:"var(--s2)",values:w["신규구직"]},
+        series:[{name:"신규구직",color:"var(--s2)",values:w["신규구직"]},
                 {name:"취업건수",color:"var(--s3)",values:w["취업건수"]}]});
-      table(document.getElementById("t-cmp"),["연월","신규구인","신규구직","취업건수"],
-        w.yms.map((y,i)=>[y,F(w["신규구인"][i]),F(w["신규구직"][i]),F(w["취업건수"][i])]).reverse());
+      table(document.getElementById("t-cmp"),["연월","신규구직","취업건수"],
+        w.yms.map((y,i)=>[y,F(w["신규구직"][i]),F(w["취업건수"][i])]).reverse());
     }
     return;}
 
@@ -438,14 +436,14 @@ function render(){
     const pick=(arr,key,ym)=>{const f=arr.find(x=>x.ym===ym);return f?f[key]:null;};
     const idx=(vals)=>{const b=vals.find(v=>v!=null)||1;return vals.map(v=>v==null?null:+(v/b*100).toFixed(1));};
     const sa=idx(yms.map(y=>pick(s.monthly_avg,"avg",y)));
-    const wo=idx(yms.map(y=>{const i=w.yms.indexOf(y);return i<0?null:w["신규구인"][i];}));
+    const wo=idx(yms.map(y=>{const i=w.yms.indexOf(y);return i<0?null:w["신규구직"][i];}));
     const ib=w["피보험자수"]?idx(yms.map(y=>{const i=(w["피보험자_yms"]||[]).indexOf(y);return i<0?null:w["피보험자수"][i];})):null;
     const series=[{name:"사람인 공고수",color:"var(--s1)",values:sa},
-                  {name:"work24 신규구인",color:"var(--s2)",values:wo}];
+                  {name:"work24 신규구직",color:"var(--s2)",values:wo}];
     if(ib) series.push({name:"고용보험 피보험자",color:"var(--s3)",values:ib});
     lineChart(document.getElementById("c-cmp"),
       {labels:yms.map(y=>y.slice(2,4)+"."+y.slice(4)),series,fmt:v=>v.toFixed(1)});
-    table(document.getElementById("t-cmp"),["연월","사람인(지수)","work24 신규구인(지수)"].concat(ib?["피보험자(지수)"]:[]),
+    table(document.getElementById("t-cmp"),["연월","사람인(지수)","work24 신규구직(지수)"].concat(ib?["피보험자(지수)"]:[]),
       yms.map((y,i)=>[y,sa[i]??"-",wo[i]??"-"].concat(ib?[ib[i]??"-"]:[])).reverse());
   }
 
