@@ -367,7 +367,8 @@ function render(){
     if(w){
       document.querySelector("#compare h2").textContent="워크넷 구인구직 월별 추이";
       document.querySelector("#compare p.sub").innerHTML=
-        "고용행정통계 work24 · 서울 25개 구 합계 · 월 단위 마감치. 사업장 소재지 기준.";
+        "고용행정통계 work24 · 서울 25개 구 합계 · 월 단위 마감치 · <b>구직자 거주지</b> 기준. "+
+        "신규구인(구인 수요)은 거주지·성별·연령으로 분해되지 않아 이 API로는 받을 수 없음.";
       document.getElementById("lgd-cmp").innerHTML=
         ['<span><i style="background:var(--s2)"></i>신규구직</span>',
          '<span><i style="background:var(--s3)"></i>취업건수</span>'].join("");
