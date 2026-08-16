@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>서울 채용트렌드 대시보드</title>
+<style>
+:root{
+  --plane:#f4f5f2; --surface:#fcfcfb; --border:rgba(11,11,11,.10);
+  --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#006300; --bad:#d03b3b; --accent:#1c5cab;
+  --radius:12px;
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])){
+    --plane:#0d0d0d; --surface:#1a1a19; --border:rgba(255,255,255,.10);
+    --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --good:#0ca30c; --bad:#e66767; --accent:#86b6ef;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+  font:14px/1.5 system-ui,-apple-system,"Segoe UI","Malgun Gothic",sans-serif}
+.layout{display:flex;min-height:100vh}
+
+/* ---------- sidebar ---------- */
+aside{width:210px;flex:0 0 210px;background:var(--surface);
+  border-right:1px solid var(--border);padding:20px 0}
+aside h1{font-size:15px;margin:0 20px 20px;letter-spacing:-.2px}
+aside h1 span{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:3px}
+aside a{display:block;padding:9px 20px;color:var(--ink2);text-decoration:none;font-size:13px;
+  border-left:3px solid transparent}
+aside a:hover{background:var(--plane);color:var(--ink)}
+aside a.on{border-left-color:var(--accent);color:var(--ink);font-weight:600}
+aside .grp{font-size:11px;color:var(--muted);padding:14px 20px 5px;letter-spacing:.4px}
+
+/* ---------- main ---------- */
+main{flex:1;min-width:0;padding:20px 24px 60px}
+.topbar{display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.chip{border:1px solid var(--accent);color:var(--accent);background:transparent;
+  border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--accent);color:var(--surface)}
+.stamp{margin-left:auto;color:var(--muted);font-size:12px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 20px;margin-bottom:16px}
+.card>h2{font-size:15px;margin:0 0 4px}
+.card>p.sub{margin:0 0 16px;font-size:12px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+@media(max-width:1100px){.grid2,.grid4{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){aside{display:none}.grid2,.grid4{grid-template-columns:1fr}}
+
+/* ---------- stat tile ---------- */
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+.tile .lbl{font-size:12px;color:var(--muted)}
+.tile .val{font-size:27px;font-weight:600;letter-spacing:-.5px;margin:6px 0 2px}
+.tile .dlt{font-size:12px;color:var(--ink2)}
+.up{color:var(--good)} .dn{color:var(--bad)}
+
+/* ---------- table ---------- */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--grid)}
+th{color:var(--muted);font-weight:500;font-size:12px}
+th:first-child,td:first-child{text-align:left}
+td{font-variant-numeric:tabular-nums}
+.scroll{max-height:330px;overflow:auto}
+details.tbl{margin-top:12px}
+details.tbl summary{cursor:pointer;color:var(--muted);font-size:12px}
+
+/* ---------- chart ---------- */
+.chart{position:relative}
+svg{display:block;width:100%;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--surface);
+  border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;
+  box-shadow:0 4px 14px rgba(0,0,0,.10);white-space:nowrap;opacity:0;transition:opacity .1s;z-index:5}
+.tip b{font-variant-numeric:tabular-nums}
+.lgd{display:flex;gap:16px;flex-wrap:wrap;margin:0 0 10px;font-size:12px;color:var(--ink2)}
+.lgd i{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:6px;vertical-align:-1px}
+
+/* ---------- qa ---------- */
+.qa-in{display:flex;gap:8px}
+.qa-in input{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--plane);color:var(--ink);font:inherit}
+.qa-in button{padding:10px 18px;border:0;border-radius:8px;background:var(--accent);
+  color:var(--surface);font:inherit;cursor:pointer}
+.qa-ex{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.qa-ex button{border:1px solid var(--border);background:transparent;color:var(--ink2);
+  border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:inherit}
+.qa-log{margin-top:16px}
+.msg{padding:12px 14px;border-radius:10px;margin-bottom:10px;font-size:13px;white-space:pre-wrap}
+.msg.q{background:var(--plane);font-weight:600}
+.msg.a{border:1px solid var(--border)}
+.note{font-size:12px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px solid var(--grid)}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside>
+  <h1>서울 채용트렌드<span>사람인 · 고용행정통계</span></h1>
+  <div class="grp">대시보드</div>
+  <a href="#overview" class="on">개요</a>
+  <a href="#keyword">키워드 클라우드</a>
+  <a href="#kwtrend">키워드 추이</a>
+  <a href="#compare">채용시장 ↔ 행정통계</a>
+  <a href="#region">지역별</a>
+  <a href="#job">직종별</a>
+  <div class="grp">도구</div>
+  <a href="#qa">데이터 질의</a>
+</aside>
+
+<main>
+  <div id="mockbar" style="display:none;background:#fff4e5;border:1px solid #eda100;color:#6b4400;
+    border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+    화면 확인용 <b>샘플 데이터</b>입니다. 실제 수집이 시작되면 이 안내는 사라집니다.</div>
+
+  <div class="topbar">
+    <button class="chip" data-range="30">최근 30일</button>
+    <button class="chip on" data-range="90">최근 90일</button>
+    <button class="chip" data-range="0">전체</button>
+    <span class="stamp" id="stamp"></span>
+  </div>
+
+  <div class="grid4" id="tiles"></div>
+
+  <section class="card" id="overview">
+    <h2>서울 전체 채용공고 추이</h2>
+    <p class="sub">사람인 채용정보 API · 매일 1회 수집한 시점 스냅샷. 공고 <b>건수</b>이며 채용 인원수가 아님.</p>
+    <div class="lgd">
+      <span><i style="background:var(--s1)"></i>일별 공고수</span>
+      <span><i style="background:var(--s2)"></i>7일 이동평균</span>
+    </div>
+    <div class="chart" id="c-trend"></div>
+    <details class="tbl"><summary>표로 보기</summary><div class="scroll" id="t-trend"></div></details>
+  </section>
+
+  <div class="grid2" id="keyword">
+    <section class="card">
+      <h2>직종 키워드</h2>
+      <p class="sub">사람인 직무 대분류 21개. <b>글자 크기 = 공고 수</b>, <b>색 = 7일 전 대비 증감</b>.</p>
+      <div class="lgd">
+        <span><i style="background:var(--s1)"></i>증가</span>
+        <span><i style="background:var(--grid)"></i>변화 적음</span>
+        <span><i style="background:var(--bad)"></i>감소</span>
+      </div>
+      <div class="chart" id="c-kwjob"></div>
+      <details class="tbl"><summary>표로 보기 (증감률 순)</summary><div class="scroll" id="t-kwjob"></div></details>
+    </section>
+    <section class="card">
+      <h2>업종·기술 키워드</h2>
+      <p class="sub">공고 통합검색(공고명·기업명·업직종)에 그 단어가 포함된 서울 공고 수.
+        색은 30일 전 대비. 키워드끼리 중복 집계되므로 서로 더하지 말 것.</p>
+      <div class="lgd">
+        <span><i style="background:var(--s1)"></i>증가</span>
+        <span><i style="background:var(--grid)"></i>변화 적음</span>
+        <span><i style="background:var(--bad)"></i>감소</span>
+      </div>
+      <div class="chart" id="c-kwtech"></div>
+      <details class="tbl"><summary>표로 보기 (증감률 순)</summary><div class="scroll" id="t-kwtech"></div></details>
+    </section>
+  </div>
+
+  <section class="card" id="kwtrend">
+    <h2>키워드 추이</h2>
+    <p class="sub">같은 범주 안에서 서로 비교되는 키워드들. 공고 수 규모가 크게 달라
+      <b>구간 첫날 = 100</b>으로 지수화했음. 범례의 괄호 안이 최근 실제 공고 수.
+      대상 키워드(청년·고령자 등)는 그 단어가 공고에 적힌 건수일 뿐, 실제 채용 규모가 아님.</p>
+    <div class="topbar" id="kwchips" style="margin-bottom:12px"></div>
+    <div class="lgd" id="kwlgd"></div>
+    <div class="chart" id="c-kwtrend"></div>
+    <details class="tbl"><summary>표로 보기 (실제 공고 수)</summary><div class="scroll" id="t-kwtrend"></div></details>
+  </section>
+
+  <section class="card" id="compare">
+    <h2>채용공고(일) ↔ 워크넷 구인구직(월)</h2>
+    <p class="sub">단위가 달라 <b>첫 달 = 100</b>으로 지수화해 한 축에 올림. 사람인은 월평균으로 접었음.
+      지역 기준이 서로 다름(사람인=근무지 표기, work24=사업장 소재지).</p>
+    <div class="lgd">
+      <span><i style="background:var(--s1)"></i>사람인 공고수</span>
+      <span><i style="background:var(--s2)"></i>work24 신규구인</span>
+      <span><i style="background:var(--s3)"></i>고용보험 피보험자</span>
+    </div>
+    <div class="chart" id="c-cmp"></div>
+    <details class="tbl"><summary>표로 보기</summary><div class="scroll" id="t-cmp"></div></details>
+  </section>
+
+  <div class="grid2">
+    <section class="card" id="region">
+      <h2>자치구별 공고수</h2>
+      <p class="sub">최근 수집일 기준 · 증감은 7일 전 대비</p>
+      <div class="chart" id="c-gu"></div>
+      <details class="tbl"><summary>표로 보기</summary><div class="scroll" id="t-gu"></div></details>
+    </section>
+    <section class="card" id="job">
+      <h2>직종별 공고수</h2>
+      <p class="sub">최근 수집일 기준 · 증감은 7일 전 대비</p>
+      <div class="chart" id="c-job"></div>
+      <details class="tbl"><summary>표로 보기</summary><div class="scroll" id="t-job"></div></details>
+    </section>
+  </div>
+
+  <section class="card" id="qa">
+    <h2>데이터 질의</h2>
+    <p class="sub">이 대시보드에 저장된 데이터만 근거로 답변합니다. 데이터에 없는 항목은 없다고 답하고,
+      대신 볼 수 있는 지표를 알려줍니다.</p>
+    <div class="qa-in">
+      <input id="q" placeholder="예: 사무직 위험해 보여?" autocomplete="off">
+      <button id="qgo">질문</button>
+    </div>
+    <div class="qa-ex">
+      <button>사무직 위험해 보여?</button>
+      <button>이 수치는 어떻게 해석해야 해?</button>
+      <button>청년 채용여건은 괜찮아 보여?</button>
+      <button>강남구랑 구로구 비교해줘</button>
+    </div>
+    <div class="qa-log" id="qlog"></div>
+    <p class="note" id="qnote"></p>
+  </section>
+</main>
+</div>
+
+<script>
+/* ===== 설정: LLM 프록시 주소. 비워두면 내장 규칙기반으로 답함 ===== */
+const QA_ENDPOINT = "";
+
+const F = n => n==null ? "-" : n.toLocaleString("ko-KR");
+const SGN = d => d==null ? "" : (d>0?"+":"")+d.toFixed(1)+"%";
+const CLS = d => d==null ? "" : (d>0?"up":d<0?"dn":"");
+let DATA, CTX, RANGE = 90, KWG = "hire";
+
+/* ---------------- charts ---------------- */
+function tip(host){
+  const t=document.createElement("div"); t.className="tip"; host.appendChild(t); return t;
+}
+function lineChart(host, {labels, series, fmt=F}){
+  host.innerHTML="";
+  const W=1000, H=280, L=56, R=14, T=14, B=34;
+  const all=series.flatMap(s=>s.values).filter(v=>v!=null);
+  let lo=Math.min(...all), hi=Math.max(...all);
+  const pad=(hi-lo)*0.12||1; lo=Math.max(0,lo-pad); hi=hi+pad;
+  const X=i=>L+(W-L-R)*(labels.length<2?0.5:i/(labels.length-1));
+  const Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
+  const ticks=5, ns="http://www.w3.org/2000/svg";
+  let g="";
+  for(let k=0;k<=ticks;k++){
+    const v=lo+(hi-lo)*k/ticks, y=Y(v);
+    g+=`<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="var(--grid)" stroke-width="1"/>`
+      +`<text x="${L-8}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(Math.round(v))}</text>`;
+  }
+  const step=Math.max(1,Math.ceil(labels.length/8));
+  for(let i=0;i<labels.length;i+=step)
+    g+=`<text x="${X(i)}" y="${H-12}" text-anchor="middle" font-size="11" fill="var(--muted)">${labels[i]}</text>`;
+  g+=`<line x1="${L}" y1="${H-B}" x2="${W-R}" y2="${H-B}" stroke="var(--axis)" stroke-width="1"/>`;
+  series.forEach(s=>{
+    const d=s.values.map((v,i)=>v==null?null:`${i&&s.values[i-1]!=null?"L":"M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`)
+      .filter(Boolean).join(" ");
+    g+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+  g+=`<line id="ch" x1="0" y1="${T}" x2="0" y2="${H-B}" stroke="var(--axis)" stroke-width="1" opacity="0"/>`;
+  series.forEach((s,k)=>g+=`<circle class="hd" data-k="${k}" r="5" fill="${s.color}" stroke="var(--surface)" stroke-width="2" opacity="0"/>`);
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:280px">${g}</svg>`;
+  const svg=host.querySelector("svg"), tp=tip(host);
+  const ch=svg.querySelector("#ch"), hds=[...svg.querySelectorAll(".hd")];
+  svg.addEventListener("pointermove",e=>{
+    const r=svg.getBoundingClientRect(), px=(e.clientX-r.left)/r.width*W;
+    let i=Math.round((px-L)/((W-L-R)/Math.max(1,labels.length-1)));
+    i=Math.max(0,Math.min(labels.length-1,i));
+    ch.setAttribute("x1",X(i)); ch.setAttribute("x2",X(i)); ch.setAttribute("opacity","1");
+    hds.forEach((c,k)=>{const v=series[k].values[i];
+      if(v==null){c.setAttribute("opacity","0");return;}
+      c.setAttribute("cx",X(i)); c.setAttribute("cy",Y(v)); c.setAttribute("opacity","1");});
+    tp.innerHTML=`<div style="color:var(--muted);margin-bottom:4px">${labels[i]}</div>`+
+      series.map(s=>s.values[i]==null?"":
+        `<div><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${s.color};margin-right:6px"></i>${s.name} <b>${fmt(s.values[i])}</b></div>`).join("");
+    tp.style.opacity=1;
+    const hx=X(i)/W*r.width;
+    tp.style.left=Math.min(r.width-tp.offsetWidth-4,Math.max(0,hx+12))+"px";
+    tp.style.top="8px";
+  });
+  svg.addEventListener("pointerleave",()=>{tp.style.opacity=0;ch.setAttribute("opacity","0");hds.forEach(c=>c.setAttribute("opacity","0"));});
+}
+function barChart(host,{items,color}){
+  host.innerHTML="";
+  const rowH=24, W=620, L=104, R=104, H=items.length*rowH+8;
+  const max=Math.max(...items.map(i=>i.count))||1;
+  let g="";
+  items.forEach((it,i)=>{
+    const y=i*rowH+4, w=(W-L-R)*it.count/max;
+    g+=`<text x="${L-10}" y="${y+14}" text-anchor="end" font-size="12" fill="var(--ink2)">${it.name}</text>`
+      +`<rect class="br" data-i="${i}" x="${L}" y="${y+4}" width="${Math.max(w,2)}" height="14" rx="4" fill="${color}"/>`
+      +`<text x="${L+w+8}" y="${y+14}" font-size="12" fill="var(--ink2)" font-variant-numeric="tabular-nums">${F(it.count)}`
+      +(it.delta==null?"":` <tspan fill="${it.delta>0?"var(--good)":it.delta<0?"var(--bad)":"var(--muted)"}">${SGN(it.delta)}</tspan>`)
+      +`</text>`;
+  });
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="max-width:${W}px;margin:0 auto">${g}</svg>`;
+  const svg=host.querySelector("svg"), tp=tip(host);
+  svg.querySelectorAll(".br").forEach(r=>{
+    r.addEventListener("pointerenter",e=>{
+      const it=items[+r.dataset.i], b=svg.getBoundingClientRect();
+      tp.innerHTML=`<b>${it.name}</b><br>공고수 <b>${F(it.count)}</b>건`+
+        (it.delta==null?"":`<br>7일 전 대비 <b>${SGN(it.delta)}</b>`);
+      tp.style.opacity=1;
+      tp.style.left=Math.min(b.width-tp.offsetWidth-4,e.clientX-b.left+12)+"px";
+      tp.style.top=(e.clientY-b.top+12)+"px";
+    });
+    r.addEventListener("pointerleave",()=>tp.style.opacity=0);
+  });
+}
+function wordCloud(host,{items}){
+  host.innerHTML="";
+  const wrap=document.createElement("div");
+  wrap.style.cssText="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;"+
+    "gap:6px 18px;padding:22px 8px;line-height:1.1";
+  const mx=Math.max(...items.map(i=>i.count)), mn=Math.min(...items.map(i=>i.count));
+  const sz=c=>13+31*(Math.sqrt(c)-Math.sqrt(mn))/(Math.sqrt(mx)-Math.sqrt(mn)||1);
+  // 증감 → 발산색 (파랑=증가, 빨강=감소, 회색=변화 적음)
+  const col=d=>{
+    if(d==null) return "var(--muted)";
+    const t=Math.min(1,Math.abs(d)/25);
+    if(t<0.15) return "var(--muted)";
+    return d>0 ? `color-mix(in oklab, var(--s1) ${30+70*t}%, var(--muted))`
+               : `color-mix(in oklab, var(--bad) ${30+70*t}%, var(--muted))`;
+  };
+  // 큰 것이 가운데로 오도록 지그재그 배치 (레이아웃 겹침 없음)
+  const sorted=[...items].sort((a,b)=>b.count-a.count), order=[];
+  sorted.forEach((it,i)=>i%2 ? order.unshift(it) : order.push(it));
+  order.forEach(it=>{
+    const s=document.createElement("span");
+    s.textContent=it.name;
+    s.style.cssText=`font-size:${sz(it.count).toFixed(1)}px;font-weight:600;color:${col(it.delta)};cursor:default`;
+    s.dataset.n=it.name; wrap.appendChild(s);
+  });
+  host.appendChild(wrap);
+  const tp=tip(host), byName=Object.fromEntries(items.map(i=>[i.name,i]));
+  wrap.addEventListener("pointerover",e=>{
+    const n=e.target.dataset?.n; if(!n) return;
+    const it=byName[n], b=host.getBoundingClientRect();
+    tp.innerHTML=`<b>${it.name}</b><br>공고수 <b>${F(it.count)}</b>건<br>30일 전 대비 <b>${SGN(it.delta)}</b>`;
+    tp.style.opacity=1;
+    tp.style.left=Math.min(b.width-tp.offsetWidth-4,Math.max(0,e.clientX-b.left+12))+"px";
+    tp.style.top=(e.clientY-b.top+14)+"px";
+  });
+  wrap.addEventListener("pointerout",()=>tp.style.opacity=0);
+}
+function table(host,cols,rows){
+  host.innerHTML=`<table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead>`+
+    `<tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+/* ---------------- render ---------------- */
+function render(){
+  const s=DATA.saramin, w=DATA.work24;
+  document.getElementById("stamp").textContent=`${DATA.updated} 기준`;
+  if(DATA.mock) document.getElementById("mockbar").style.display="block";
+  if(!s){document.getElementById("tiles").innerHTML=
+    `<div class="tile"><div class="lbl">데이터 없음</div><div class="val">–</div>
+     <div class="dlt">수집이 아직 실행되지 않았습니다</div></div>`;return;}
+
+  const n=s.dates.length, k=RANGE?Math.max(0,n-RANGE):0;
+  const dates=s.dates.slice(k), tot=s.total.slice(k), ma=s.ma7.slice(k);
+  const last=s.total[n-1], p7=s.total[n-8], p1=s.total[n-2];
+
+  document.getElementById("tiles").innerHTML=[
+    ["최근 공고수", F(last)+"건", `${s.latest_date} · 전일 ${SGN(pct(last,p1))}`, CLS(pct(last,p1))],
+    ["7일 이동평균", F(Math.round(s.ma7[n-1]))+"건", "주말 변동 제거", ""],
+    ["7일 전 대비", SGN(pct(last,p7)), `${F(p7)}건 → ${F(last)}건`, CLS(pct(last,p7))],
+    ["지수", s.index[n-1].toFixed(1), `${s.index_base_date} = 100`, CLS(s.index[n-1]-100)],
+  ].map(([l,v,d,c])=>`<div class="tile"><div class="lbl">${l}</div>
+      <div class="val ${c}">${v}</div><div class="dlt">${d}</div></div>`).join("");
+
+  lineChart(document.getElementById("c-trend"),{
+    labels:dates.map(d=>d.slice(5)),
+    series:[{name:"일별 공고수",color:"var(--s1)",values:tot},
+            {name:"7일 이동평균",color:"var(--s2)",values:ma}]});
+  table(document.getElementById("t-trend"),["일자","공고수","7일평균","지수"],
+    dates.map((d,i)=>[d,F(tot[i]),F(Math.round(ma[i])),s.index[k+i].toFixed(1)]).reverse());
+
+  // 워드클라우드 1: 직종
+  wordCloud(document.getElementById("c-kwjob"),{items:s.by_job});
+  table(document.getElementById("t-kwjob"),["직종","공고수","7일 전 대비"],
+    s.by_job.slice().sort((a,b)=>(b.delta??-99)-(a.delta??-99))
+      .map(x=>[x.name,F(x.count),SGN(x.delta)]));
+
+  // 워드클라우드 2: 업종·기술
+  const cloudG=(s.kw_groups||[]).find(g=>g.type==="cloud");
+  if(cloudG && s.kw_latest){
+    const items=cloudG.kw.map(k=>s.kw_latest[k]).filter(Boolean);
+    wordCloud(document.getElementById("c-kwtech"),{items});
+    table(document.getElementById("t-kwtech"),["키워드","공고수","30일 전 대비"],
+      items.slice().sort((a,b)=>(b.delta??-99)-(a.delta??-99))
+        .map(x=>[x.name,F(x.count),SGN(x.delta)]));
+  }
+
+  // 키워드 추이
+  const sg=(s.kw_groups||[]).filter(g=>g.type==="series");
+  if(sg.length && s.kw_daily){
+    const chips=document.getElementById("kwchips");
+    if(!chips.dataset.built){
+      chips.innerHTML=sg.map((g,i)=>
+        `<button class="chip${i?"":" on"}" data-g="${g.id}">${g.title}</button>`).join("");
+      chips.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{
+        chips.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));
+        b.classList.add("on"); KWG=b.dataset.g; drawKwTrend();});
+      chips.dataset.built="1";
+    }
+    drawKwTrend();
+  }
+
+  // 비교: 월평균 지수화
+  if(w){
+    const yms=[...new Set([...s.monthly_avg.map(m=>m.ym),...w.yms])].sort();
+    const pick=(arr,key,ym)=>{const f=arr.find(x=>x.ym===ym);return f?f[key]:null;};
+    const idx=(vals)=>{const b=vals.find(v=>v!=null)||1;return vals.map(v=>v==null?null:+(v/b*100).toFixed(1));};
+    const sa=idx(yms.map(y=>pick(s.monthly_avg,"avg",y)));
+    const wo=idx(yms.map(y=>{const i=w.yms.indexOf(y);return i<0?null:w["신규구인"][i];}));
+    const ib=w["피보험자수"]?idx(yms.map(y=>{const i=(w["피보험자_yms"]||[]).indexOf(y);return i<0?null:w["피보험자수"][i];})):null;
+    const series=[{name:"사람인 공고수",color:"var(--s1)",values:sa},
+                  {name:"work24 신규구인",color:"var(--s2)",values:wo}];
+    if(ib) series.push({name:"고용보험 피보험자",color:"var(--s3)",values:ib});
+    lineChart(document.getElementById("c-cmp"),
+      {labels:yms.map(y=>y.slice(2,4)+"."+y.slice(4)),series,fmt:v=>v.toFixed(1)});
+    table(document.getElementById("t-cmp"),["연월","사람인(지수)","work24 신규구인(지수)"].concat(ib?["피보험자(지수)"]:[]),
+      yms.map((y,i)=>[y,sa[i]??"-",wo[i]??"-"].concat(ib?[ib[i]??"-"]:[])).reverse());
+  }
+
+  barChart(document.getElementById("c-gu"),{items:s.by_gu,color:"var(--s1)"});
+  table(document.getElementById("t-gu"),["자치구","공고수","7일 전 대비"],
+    s.by_gu.map(x=>[x.name,F(x.count),SGN(x.delta)]));
+  barChart(document.getElementById("c-job"),{items:s.by_job,color:"var(--s1)"});
+  table(document.getElementById("t-job"),["직종","공고수","7일 전 대비"],
+    s.by_job.map(x=>[x.name,F(x.count),SGN(x.delta)]));
+}
+function pct(a,b){return !b?null:(a-b)/b*100;}
+
+const PAL=["--s1","--s2","--s3","#eda100","#e87ba4","#4a3aa7"];
+function drawKwTrend(){
+  const s=DATA.saramin, g=(s.kw_groups||[]).find(x=>x.id===KWG)||s.kw_groups.find(x=>x.type==="series");
+  if(!g) return;
+  KWG=g.id;
+  const n=s.dates.length, k=RANGE?Math.max(0,n-RANGE):0;
+  const dates=s.dates.slice(k);
+  // 주말 톱니를 없애야 6개 선이 구분된다 → 7일 이동평균 후 지수화
+  const smooth=a=>a.map((_,i)=>{
+    if(i<6) return null;                       // 이동평균 워밍업 구간은 그리지 않음
+    const w=a.slice(i-6,i+1).filter(v=>v!=null);
+    return w.length===7?w.reduce((x,y)=>x+y,0)/7:null;});
+  const series=g.kw.map((name,i)=>{
+    const raw=(s.kw_daily[name]||[]).slice(k), sm=smooth(raw);
+    const b=sm.find(v=>v)||1;
+    const c=PAL[i%PAL.length];
+    return {name,color:c.startsWith("--")?`var(${c})`:c,
+            values:sm.map(v=>v==null?null:+(v/b*100).toFixed(1)),raw};
+  });
+  document.getElementById("kwlgd").innerHTML=series.map(x=>
+    `<span><i style="background:${x.color}"></i>${x.name} <span style="color:var(--muted)">(${F(x.raw.at(-1))}건)</span></span>`).join("");
+  lineChart(document.getElementById("c-kwtrend"),
+    {labels:dates.map(d=>d.slice(5)),series,fmt:v=>v.toFixed(0)});
+  table(document.getElementById("t-kwtrend"),["일자",...g.kw],
+    dates.map((d,i)=>[d,...series.map(x=>F(x.raw[i]))]).reverse());
+}
+
+/* ---------------- Q&A ---------------- */
+function say(cls,text){
+  const d=document.createElement("div"); d.className="msg "+cls; d.textContent=text;
+  document.getElementById("qlog").prepend(d);
+}
+function localAnswer(q){
+  const s=DATA.saramin, out=[];
+  const hit=arr=>arr.filter(x=>[...x.name].some(()=>false)||
+    x.name.split(/[·]/).some(t=>t&&q.includes(t))||q.includes(x.name));
+  const jobs=hit(s.by_job), gus=hit(s.by_gu);
+
+  if(/해석|어떻게 보|무슨 의미|기준/.test(q)){
+    return `화면의 숫자는 사람인 채용정보 API에서 매일 1회 조회한 '검색결과 총 건수'입니다.\n`+
+      `· 채용 인원수가 아니라 공고 건수입니다. 한 공고에 여러 명을 뽑을 수 있습니다.\n`+
+      `· 마감된 공고는 빠지므로 '그 시점에 열려 있는 공고 수'로 읽어야 합니다.\n`+
+      `· 주말에 크게 떨어지므로 추세는 7일 이동평균으로 보십시오.\n`+
+      `· 지수는 ${s.index_base_date}을 100으로 둔 상대값입니다.\n`+
+      `현재 ${s.latest_date} 서울 전체 ${F(s.total.at(-1))}건, 7일평균 ${F(Math.round(s.ma7.at(-1)))}건입니다.`;
+  }
+  if(/청년|연령|20대|30대|고령|중장년/.test(q)){
+    return `연령대별로는 답변할 수 없습니다. 이 대시보드는 사람인 API에서 연령 조건 없이 공고 건수만 수집하므로 `+
+      `청년 대상 공고를 따로 셀 수 없습니다.\n`+
+      `대신 볼 수 있는 것: 직종별 공고 증감입니다. 신입 비중이 높은 직종의 흐름으로 간접 추정해야 합니다.\n`+
+      `최근 7일 증가 상위: ${s.by_job.slice().sort((a,b)=>(b.delta??-99)-(a.delta??-99)).slice(0,3).map(x=>x.name+" "+SGN(x.delta)).join(", ")}\n`+
+      `감소 상위: ${s.by_job.slice().sort((a,b)=>(a.delta??99)-(b.delta??99)).slice(0,3).map(x=>x.name+" "+SGN(x.delta)).join(", ")}\n`+
+      `연령별 취득·상실은 work24 피보험자 API에 연령코드가 있어 수집 범위를 넓히면 가능합니다.`;
+  }
+  if(jobs.length){
+    jobs.forEach(j=>out.push(`${j.name}: ${s.latest_date} 기준 ${F(j.count)}건, 7일 전 대비 ${SGN(j.delta)}. `+
+      `서울 전체 공고의 ${(j.count/s.total.at(-1)*100).toFixed(1)}%.`));
+    out.push(`공고 건수는 채용 인원이나 채용 성사 여부를 뜻하지 않습니다. 감소가 곧 '위험'은 아니며, `+
+      `계절성과 마감 시점 영향을 함께 봐야 합니다.`);
+    return out.join("\n");
+  }
+  if(gus.length){
+    gus.forEach(g=>out.push(`${g.name}: ${F(g.count)}건, 7일 전 대비 ${SGN(g.delta)}.`));
+    if(gus.length>1){
+      const [a,b]=gus; out.push(`${a.name}이 ${b.name}의 ${(a.count/b.count).toFixed(1)}배입니다.`);
+    }
+    out.push(`사람인 지역은 공고에 표기된 근무지 기준이라 본사 소재지로 몰리는 경향이 있습니다.`);
+    return out.join("\n");
+  }
+  return `그 질문에 답할 데이터를 찾지 못했습니다.\n`+
+    `현재 답변 가능한 범위: 서울 전체·자치구별·직종별 일일 공고수와 증감, work24 월별 신규구인·신규구직·취업건수입니다.\n`+
+    `직종명이나 자치구명을 넣어 다시 물어보십시오.`;
+}
+async function ask(q){
+  if(!q.trim())return;
+  say("q",q);
+  if(!QA_ENDPOINT){ say("a",localAnswer(q)); return; }
+  say("a","…");
+  try{
+    const r=await fetch(QA_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({question:q,context:CTX})});
+    const j=await r.json();
+    document.querySelector("#qlog .msg.a").textContent=j.answer||JSON.stringify(j);
+  }catch(e){ document.querySelector("#qlog .msg.a").textContent="응답 실패: "+e.message; }
+}
+
+/* ---------------- boot ---------------- */
+document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); RANGE=+b.dataset.range; render();});
+document.querySelectorAll("aside a").forEach(a=>a.onclick=()=>{
+  document.querySelectorAll("aside a").forEach(x=>x.classList.remove("on")); a.classList.add("on");});
+document.getElementById("qgo").onclick=()=>{const i=document.getElementById("q");ask(i.value);i.value="";};
+document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("qgo").click();});
+document.querySelectorAll(".qa-ex button").forEach(b=>b.onclick=()=>ask(b.textContent));
+document.getElementById("qnote").textContent = QA_ENDPOINT
+  ? "답변은 저장된 데이터(context.json)만 근거로 생성됩니다."
+  : "현재 내장 규칙 기반으로 답변 중입니다. AI 응답을 붙이면 자유로운 질문까지 처리됩니다.";
+
+Promise.all([fetch("data.json").then(r=>r.json()),
+             fetch("context.json").then(r=>r.json()).catch(()=>null)])
+  .then(([d,c])=>{DATA=d;CTX=c;render();})
+  .catch(e=>document.getElementById("tiles").innerHTML=
+    `<div class="tile"><div class="lbl">불러오기 실패</div><div class="val">–</div><div class="dlt">${e.message}</div></div>`);
+</script>
+</body>
+</html>
