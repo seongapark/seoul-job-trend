@@ -18,7 +18,7 @@ URL = {"OPIA": "https://eis.work24.go.kr/opi/joApi.do",
 AGES = [f"{i:02d}" for i in range(1, 16)]
 N_MONTHS = int(os.environ.get("N_MONTHS", "24"))
 WITH_OPIB = os.environ.get("WITH_OPIB", "0") == "1"
-WORKERS = 4
+WORKERS = int(os.environ.get("WORKERS", "4"))
 OPIA_CSV = os.path.join(DATA, "work24_opia.csv")
 OPIB_CSV = os.path.join(DATA, "work24_opib.csv")
 
